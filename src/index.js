@@ -7,7 +7,7 @@ const WheelComponent = ({
   onFinished,
   primaryColor = 'black',
   contrastColor = 'white',
-  buttonText = 'Spin',
+  buttonText = 'QUAY',
   isOnlyOnce = true,
   size = 290,
   upDuration = 100,
@@ -114,76 +114,148 @@ const WheelComponent = ({
     drawNeedle()
   }
 
+
+const drawWheel = () => {
+  const ctx = canvasContext;
+  let lastAngle = angleCurrent;
+  const len = segments.length;
+  const PI2 = Math.PI * 2;
+  const bigSize = size + 15; // Increase size by 10 (you can adjust the value according to your needs)
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = primaryColor;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.font = '1em ' + fontFamily;
+
+  // Function to draw a single segment
   const drawSegment = (key, lastAngle, angle) => {
-    const ctx = canvasContext
-    const value = segments[key]
-    ctx.save()
-    ctx.beginPath()
-    ctx.moveTo(centerX, centerY)
-    ctx.arc(centerX, centerY, size, lastAngle, angle, false)
-    ctx.lineTo(centerX, centerY)
-    ctx.closePath()
-    ctx.fillStyle = segColors[key]
-    ctx.fill()
-    ctx.stroke()
-    ctx.save()
-    ctx.translate(centerX, centerY)
-    ctx.rotate((lastAngle + angle) / 2)
-    ctx.fillStyle = contrastColor
-    ctx.font = 'bold 1em ' + fontFamily
-    ctx.fillText(value.substr(0, 21), size / 2 + 20, 0)
-    ctx.restore()
+    const segmentColor = segColors[key];
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, size, lastAngle, angle, false);
+    ctx.lineTo(centerX, centerY);
+    ctx.closePath();
+    ctx.fillStyle = segmentColor;
+    ctx.fill();
+    ctx.strokeStyle = primaryColor;
+    ctx.stroke();
+
+    ctx.save();
+    const segmentAngle = (lastAngle + angle) / 2;
+  const textRadius = size / 2; // Distance from the center to the text position
+  const textX = centerX + textRadius * Math.cos(segmentAngle);
+  const textY = centerY + textRadius * Math.sin(segmentAngle);
+
+  ctx.translate(textX, textY);
+  ctx.rotate(segmentAngle + Math.PI / 2); // Rotate the text to make it horizontal
+  // Draw the image at the top of the text
+  const imageWidth = 80;
+  const imageHeight = 80;
+  const imageX = -imageWidth / 2; // Center the image horizontally
+  const imageY = -textRadius - imageHeight; // Position the image above the text
+
+  const image = new Image();
+  image.src = segments[key].image;
+  console.log('image is' , image )
+  
+  image.onload = () => {
+    ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+  };
+  // Change the text position here (translate along x and y axes)
+  const textPositionX = 0;
+  const textPositionY = 0;
+
+  ctx.fillStyle = contrastColor;
+  ctx.font = 'bold 1em ' + fontFamily;
+  const value = segments[key].name;
+  ctx.fillText(value.substr(0, 21), textPositionX, textPositionY);
+
+    ctx.restore();
+  };
+
+  // Draw outer circle (original size)
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size, 0, PI2, false);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Save the current context state
+  ctx.save();
+
+  // Create a clipping region using the bigger circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, bigSize, 0, PI2, false);
+  ctx.clip();
+
+  // Draw the clipped area with the red color
+  ctx.fillStyle = '#B0081C';
+  ctx.fillRect(centerX - bigSize, centerY - bigSize, 2 * bigSize, 2 * bigSize);
+
+  // Restore the previous context state (remove the clipping region)
+  ctx.restore();
+
+  // Function to draw small white circles
+  const drawWhiteCircle = (x, y, radius) => {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, PI2, false);
+    ctx.closePath();
+    ctx.fillStyle = 'white';
+    ctx.fill();
+  };
+
+  // Number of small white circles you want to draw
+  const numWhiteCircles = 50;
+
+  // Calculate the distance between the center of the red area and the small white circles
+  const distance = (bigSize + size) / 2;
+
+  for (let i = 0; i < numWhiteCircles; i++) {
+    const angle = angleCurrent + (i / numWhiteCircles) * PI2;
+    const x = centerX + distance * Math.cos(angle);
+    const y = centerY + distance * Math.sin(angle);
+    drawWhiteCircle(x, y, 5); // Adjust the size of the small white circles as needed
   }
 
-  const drawWheel = () => {
-    const ctx = canvasContext
-    let lastAngle = angleCurrent
-    const len = segments.length
-    const PI2 = Math.PI * 2
-    ctx.lineWidth = 1
-    ctx.strokeStyle = primaryColor
-    ctx.textBaseline = 'middle'
-    ctx.textAlign = 'center'
-    ctx.font = '1em ' + fontFamily
-    for (let i = 1; i <= len; i++) {
-      const angle = PI2 * (i / len) + angleCurrent
-      drawSegment(i - 1, lastAngle, angle)
-      lastAngle = angle
-    }
-
-    // Draw a center circle
-    ctx.beginPath()
-    ctx.arc(centerX, centerY, 50, 0, PI2, false)
-    ctx.closePath()
-    ctx.fillStyle = primaryColor
-    ctx.lineWidth = 10
-    ctx.strokeStyle = contrastColor
-    ctx.fill()
-    ctx.font = 'bold 1em ' + fontFamily
-    ctx.fillStyle = contrastColor
-    ctx.textAlign = 'center'
-    ctx.fillText(buttonText, centerX, centerY + 3)
-    ctx.stroke()
-
-    // Draw outer circle
-    ctx.beginPath()
-    ctx.arc(centerX, centerY, size, 0, PI2, false)
-    ctx.closePath()
-
-    ctx.lineWidth = 10
-    ctx.strokeStyle = primaryColor
-    ctx.stroke()
+  for (let i = 1; i <= len; i++) {
+    const angle = PI2 * (i / len) + angleCurrent;
+    drawSegment(i - 1, lastAngle, angle);
+    lastAngle = angle;
   }
+
+  // Draw a center circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 50, 0, PI2, false);
+  ctx.closePath();
+  ctx.fillStyle = '#7d220a';
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = contrastColor;
+  ctx.fill();
+  ctx.font = 'bold 1em ' + fontFamily;
+  ctx.fillStyle = contrastColor;
+  ctx.textAlign = 'center';
+  ctx.fillText(buttonText, centerX, centerY + 3);
+  ctx.stroke();
+};
+
+
+
+
+
 
   const drawNeedle = () => {
     const ctx = canvasContext
     ctx.lineWidth = 1
-    ctx.strokeStyle = contrastColor
-    ctx.fileStyle = contrastColor
+    ctx.strokeStyle = 'red'
+    // ctx.fillStyle = contrastColor
+    ctx.fillStyle  = '#4682B4';
+
     ctx.beginPath()
-    ctx.moveTo(centerX + 20, centerY - 50)
-    ctx.lineTo(centerX - 20, centerY - 50)
-    ctx.lineTo(centerX, centerY - 70)
+    ctx.moveTo(centerX + 10, centerY - 50)
+    ctx.lineTo(centerX - 10, centerY - 50)
+    ctx.lineTo(centerX, centerY - 120)
+    ctx.fillStyle =  '#4682B4';
+
     ctx.closePath()
     ctx.fill()
     const change = angleCurrent + Math.PI / 2
@@ -194,8 +266,9 @@ const WheelComponent = ({
     if (i < 0) i = i + segments.length
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillStyle = primaryColor
+    ctx.fillStyle = '#4682B4';
     ctx.font = 'bold 1.5em ' + fontFamily
+    
     currentSegment = segments[i]
     isStarted && ctx.fillText(currentSegment, centerX + 10, centerY + size + 50)
   }
@@ -217,3 +290,5 @@ const WheelComponent = ({
   )
 }
 export default WheelComponent
+
+
