@@ -14,9 +14,13 @@ const WheelComponent = ({
   downDuration = 1000,
   fontFamily = 'proxima-nova'
 }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+
   let currentSegment = ''
   let isStarted = false
   const [isFinished, setFinished] = useState(false)
+  const [loadedImages, setLoadedImages] = useState([]); // State to store the loaded images
+
   let timerHandle = 0
   const timerDelay = segments.length
   let angleCurrent = 0
@@ -29,12 +33,56 @@ const WheelComponent = ({
   let frames = 0
   const centerX = 300
   const centerY = 300
+
   useEffect(() => {
-    wheelInit()
+    console.log('Loaded Images:', loadedImages);
+  }, [loadedImages]);
+  // useEffect(() => {
+  //   // Preload images when the component mounts
+  //   preloadImages();
+  //   // Initialize and draw the wheel
+  //   wheelInit();
+  //   // Hide address bar on mobile devices
+  //   setTimeout(() => {
+  //     window.scrollTo(0, 1);
+  //   }, 0);
+  // }, []);
+  useEffect(() => {
+    // Preload images when the component mounts
+    preloadImages();
+    // Hide address bar on mobile devices
     setTimeout(() => {
-      window.scrollTo(0, 1)
-    }, 0)
-  }, [])
+      window.scrollTo(0, 1);
+    }, 0);
+  }, []);
+
+  useEffect(() => {
+    // Initialize and draw the wheel once all images are loaded
+    if (isLoaded) {
+      wheelInit();
+    }
+  }, [isLoaded]);
+
+  // Function to preload the images
+  const preloadImages = async () => {
+    const imagePromises = segments.map((segment) => {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.src = segment.image;
+        image.onload = () => resolve(image);
+        image.onerror = (error) => reject(error);
+      });
+    });
+
+    try {
+      const images = await Promise.all(imagePromises);
+      setLoadedImages(images);
+      setIsLoaded(true); // Set the flag to indicate that all images are loaded
+    } catch (error) {
+      console.error('Failed to preload images:', error);
+    }
+  };
+  
   const wheelInit = () => {
     initCanvas()
     wheelDraw()
@@ -42,7 +90,7 @@ const WheelComponent = ({
 
   const initCanvas = () => {
     let canvas = document.getElementById('canvas')
-    console.log(navigator)
+    console.log('Canvas:', canvas);
     if (navigator.userAgent.indexOf('MSIE') !== -1) {
       canvas = document.createElement('canvas')
       canvas.setAttribute('width', 1000)
@@ -140,40 +188,39 @@ const drawWheel = () => {
     ctx.fill();
     ctx.strokeStyle = primaryColor;
     ctx.stroke();
-
-    ctx.save();
-    const segmentAngle = (lastAngle + angle) / 2;
-  const textRadius = size / 2; // Distance from the center to the text position
-  const textX = centerX + textRadius * Math.cos(segmentAngle);
-  const textY = centerY + textRadius * Math.sin(segmentAngle);
-
-  ctx.translate(textX, textY);
-  ctx.rotate(segmentAngle + Math.PI / 2); // Rotate the text to make it horizontal
-  // Draw the image at the top of the text
-  const imageWidth = 80;
-  const imageHeight = 80;
-  const imageX = -imageWidth / 2; // Center the image horizontally
-  const imageY = -textRadius - imageHeight; // Position the image above the text
-
-  const image = new Image();
-  image.src = segments[key].image;
-  console.log('image is' , image )
   
-  image.onload = () => {
-    ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+    // No need to save and restore here (remove these lines)
+    // ctx.save();
+  
+    const segmentAngle = (lastAngle + angle) / 2;
+    const textRadius = size / 2; // Distance from the center to the text position
+    const textX = centerX + textRadius * Math.cos(segmentAngle);
+    const textY = centerY + textRadius * Math.sin(segmentAngle);
+  
+    ctx.translate(textX, textY);
+    ctx.rotate(segmentAngle + Math.PI / 2); // Rotate the text to make it horizontal
+    // Draw the image at the top of the text
+    const image = loadedImages[key];
+    console.log('image before', image);
+    if (image) {
+      console.log('image after', image);
+      const imageWidth = 80;
+      const imageHeight = 80;
+      const imageX = -imageWidth / 2;
+      const imageY = -textRadius - imageHeight + 120; // Position the image above the text
+      ctx.drawImage(image, imageX, imageY, imageWidth, imageHeight);
+    }
+    // Change the text position here (translate along x and y axes)
+    const textPositionX = 0;
+    const textPositionY = 0;
+  
+    ctx.fillStyle = contrastColor;
+    ctx.font = 'bold 1em ' + fontFamily;
+    const value = segments[key].name;
+    ctx.fillText(value.substr(0, 21), textPositionX, textPositionY);
+  
+    ctx.restore(); // Restore context after each segment drawing
   };
-  // Change the text position here (translate along x and y axes)
-  const textPositionX = 0;
-  const textPositionY = 0;
-
-  ctx.fillStyle = contrastColor;
-  ctx.font = 'bold 1em ' + fontFamily;
-  const value = segments[key].name;
-  ctx.fillText(value.substr(0, 21), textPositionX, textPositionY);
-
-    ctx.restore();
-  };
-
   // Draw outer circle (original size)
   ctx.beginPath();
   ctx.arc(centerX, centerY, size, 0, PI2, false);

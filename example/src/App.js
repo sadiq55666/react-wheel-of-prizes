@@ -60,7 +60,7 @@ const App = () => {
 
   return (
     <React.Fragment>
-      {console.log('segments',segments)}
+      
       <WheelComponent
         segments={segments}
         segColors={segColors}
